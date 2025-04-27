@@ -1,11 +1,7 @@
 import base64
 import streamlit as st
-import os
 
 def set_background(png_file):
-    if not os.path.exists(png_file):
-        st.warning(f"Nền '{png_file}' không tìm thấy.")
-        return
     with open(png_file, "rb") as f:
         data = f.read()
     b64 = base64.b64encode(data).decode()

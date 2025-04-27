@@ -22,7 +22,6 @@ def parse_coordinates(text):
                 else:
                     x = int(next_number)
                 i += 1
-
             coords.append([float(x), float(y), 0])
             i += 1
             continue
