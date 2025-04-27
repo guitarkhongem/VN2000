@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import re
+import os
 from streamlit_folium import st_folium
 
 from functions.parser import parse_coordinates
@@ -10,15 +11,22 @@ from functions.background import set_background
 from functions.footer import show_footer
 from analytics.logger import log_visit
 
+# Xác định đường dẫn tuyệt đối hiện tại
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+
 # Setup
 st.set_page_config(page_title="VN2000 ⇄ WGS84 Converter", layout="wide")
 log_visit()
-set_background("assets/background.png")
+set_background(os.path.join(CURRENT_DIR, "assets", "background.png"))
 
 # Header
 col1, col2 = st.columns([1, 5])
 with col1:
-    st.image("assets/logo.jpg", width=90)
+    logo_path = os.path.join(CURRENT_DIR, "assets", "logo.jpg")
+    if os.path.exists(logo_path):
+        st.image(logo_path, width=90)
+    else:
+        st.warning("⚠️ Không tìm thấy file logo.jpg trong thư mục assets.")
 with col2:
     st.title("VN2000 ⇄ WGS84 Converter")
     st.markdown("### BẤT ĐỘNG SẢN HUYỆN HƯỚNG HÓA")
