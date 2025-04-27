@@ -5,19 +5,44 @@ import os
 from streamlit_folium import st_folium
 
 from functions.parser import parse_coordinates
-from functions.converter import vn2000_to_wgs84_baibao, wgs84_to_vn2000_baibao, get_lon0_from_province
+from functions.converter import vn2000_to_wgs84_baibao, wgs84_to_vn2000_baibao
 from functions.mapgen import df_to_kml, generate_map
 from functions.background import set_background
 from functions.footer import show_footer
 from analytics.logger import log_visit
 
-# Xác định đường dẫn tuyệt đối hiện tại
+# Xác định đường dẫn tuyệt đối
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Setup
 st.set_page_config(page_title="VN2000 ⇄ WGS84 Converter", layout="wide")
 log_visit()
 set_background(os.path.join(CURRENT_DIR, "assets", "background.png"))
+
+# Hàm hỗ trợ chuyển decimal degree thành độ phút
+def decimal_to_dms_lon0(decimal_deg):
+    degrees = int(decimal_deg)
+    minutes = int(round((decimal_deg - degrees) * 60))
+    return f"{degrees}°{minutes}'"
+
+# Danh sách kinh tuyến trục kèm tỉnh
+lon0_choices = {
+    104.5: "Kiên Giang, Cà Mau",
+    104.75: "Lào Cai, Phú Thọ, Nghệ An, An Giang",
+    105.0: "Vĩnh Phúc, Hà Nam, Ninh Bình, Thanh Hóa, Đồng Tháp, TP. Cần Thơ, Hậu Giang, Bạc Liêu",
+    105.5: "Hà Giang, Bắc Ninh, Hải Dương, Hưng Yên, Nam Định, Thái Bình, Hà Tĩnh, Tây Ninh, Vĩnh Long, Trà Vinh",
+    105.75: "TP. Hải Phòng, Bình Dương, Long An, Tiền Giang, Bến Tre, TP. Hồ Chí Minh",
+    106.0: "Tuyên Quang, Hòa Bình, Quảng Bình",
+    106.25: "Quảng Trị, Bình Phước",
+    106.5: "Bắc Kạn, Thái Nguyên",
+    107.0: "Bắc Giang, Thừa Thiên – Huế",
+    107.25: "Lạng Sơn",
+    107.5: "Kon Tum",
+    107.75: "TP. Đà Nẵng, Quảng Nam, Đồng Nai, Bà Rịa – Vũng Tàu, Lâm Đồng",
+    108.0: "Quảng Ngãi",
+    108.25: "Bình Định, Khánh Hòa, Ninh Thuận",
+    108.5: "Gia Lai, Đắk Lắk, Đắk Nông, Phú Yên, Bình Thuận"
+}
 
 # Header
 col1, col2 = st.columns([1, 5])
@@ -35,35 +60,18 @@ with col2:
 tab1, tab2 = st.tabs(["➡️ VN2000 → WGS84", "⬅️ WGS84 → VN2000"])
 
 with tab1:
-    # --- Combobox kinh tuyến trục theo tỉnh ---
-    lon0_choices = {
-        104.5: "Kiên Giang, Cà Mau",
-        104.75: "Lào Cai, Phú Thọ, Nghệ An, An Giang",
-        105.0: "Vĩnh Phúc, Hà Nam, Ninh Bình, Thanh Hóa, Đồng Tháp, TP. Cần Thơ, Hậu Giang, Bạc Liêu",
-        105.5: "Hà Giang, Bắc Ninh, Hải Dương, Hưng Yên, Nam Định, Thái Bình, Hà Tĩnh, Tây Ninh, Vĩnh Long, Trà Vinh",
-        105.75: "TP. Hải Phòng, Bình Dương, Long An, Tiền Giang, Bến Tre, TP. Hồ Chí Minh",
-        106.0: "Tuyên Quang, Hòa Bình, Quảng Bình",
-        106.25: "Quảng Trị, Bình Phước",
-        106.5: "Bắc Kạn, Thái Nguyên",
-        107.0: "Bắc Giang, Thừa Thiên – Huế",
-        107.25: "Lạng Sơn",
-        107.5: "Kon Tum",
-        107.75: "TP. Đà Nẵng, Quảng Nam, Đồng Nai, Bà Rịa – Vũng Tàu, Lâm Đồng",
-        108.0: "Quảng Ngãi",
-        108.25: "Bình Định, Khánh Hòa, Ninh Thuận",
-        108.5: "Gia Lai, Đắk Lắk, Đắk Nông, Phú Yên, Bình Thuận"
-    }
-    lon0_display = [f"{lon}° – {province}" for lon, province in lon0_choices.items()]
+    # Combobox chọn kinh tuyến trục
+    lon0_display = [f"{decimal_to_dms_lon0(lon)} – {province}" for lon, province in lon0_choices.items()]
     default_index = list(lon0_choices.keys()).index(106.25)
 
     selected_display = st.selectbox(
-        "🧭 Chọn kinh tuyến trục và tỉnh tương ứng",
+        "🧭 Chọn kinh tuyến trục (độ phút chính xác)",
         options=lon0_display,
-        index=default_index
+        index=default_index,
+        key="lon0_vn2000"
     )
-    selected_lon0 = float(selected_display.split("°")[0])
+    selected_lon0 = list(lon0_choices.keys())[lon0_display.index(selected_display)]
 
-    # --- Nhập toạ độ VN2000 ---
     coords_input = st.text_area("📝 Nhập toạ độ VN2000 (X Y H hoặc mã hiệu E/N)", height=180)
     if st.button("🔁 Chuyển sang WGS84"):
         parsed = parse_coordinates(coords_input)
@@ -77,38 +85,19 @@ with tab1:
         else:
             st.error("⚠️ Không có dữ liệu hợp lệ!")
 
-
 with tab2:
-    # --- Combobox kinh tuyến trục theo tỉnh ---
-    lon0_choices = {
-        104.5: "Kiên Giang, Cà Mau",
-        104.75: "Lào Cai, Phú Thọ, Nghệ An, An Giang",
-        105.0: "Vĩnh Phúc, Hà Nam, Ninh Bình, Thanh Hóa, Đồng Tháp, TP. Cần Thơ, Hậu Giang, Bạc Liêu",
-        105.5: "Hà Giang, Bắc Ninh, Hải Dương, Hưng Yên, Nam Định, Thái Bình, Hà Tĩnh, Tây Ninh, Vĩnh Long, Trà Vinh",
-        105.75: "TP. Hải Phòng, Bình Dương, Long An, Tiền Giang, Bến Tre, TP. Hồ Chí Minh",
-        106.0: "Tuyên Quang, Hòa Bình, Quảng Bình",
-        106.25: "Quảng Trị, Bình Phước",
-        106.5: "Bắc Kạn, Thái Nguyên",
-        107.0: "Bắc Giang, Thừa Thiên – Huế",
-        107.25: "Lạng Sơn",
-        107.5: "Kon Tum",
-        107.75: "TP. Đà Nẵng, Quảng Nam, Đồng Nai, Bà Rịa – Vũng Tàu, Lâm Đồng",
-        108.0: "Quảng Ngãi",
-        108.25: "Bình Định, Khánh Hòa, Ninh Thuận",
-        108.5: "Gia Lai, Đắk Lắk, Đắk Nông, Phú Yên, Bình Thuận"
-    }
-    lon0_display = [f"{lon}° – {province}" for lon, province in lon0_choices.items()]
+    # Combobox chọn kinh tuyến trục
+    lon0_display = [f"{decimal_to_dms_lon0(lon)} – {province}" for lon, province in lon0_choices.items()]
     default_index = list(lon0_choices.keys()).index(106.25)
 
     selected_display = st.selectbox(
-        "🧭 Chọn kinh tuyến trục (mặc định Quảng Trị 106.25°)",
+        "🧭 Chọn kinh tuyến trục (độ phút chính xác)",
         options=lon0_display,
         index=default_index,
         key="lon0_wgs84"
     )
-    selected_lon0 = float(selected_display.split("°")[0])
+    selected_lon0 = list(lon0_choices.keys())[lon0_display.index(selected_display)]
 
-    # --- Nhập toạ độ WGS84 ---
     coords_input = st.text_area("📝 Nhập toạ độ WGS84 (Lat Lon H)", height=180, key="wgs84input")
     if st.button("🔁 Chuyển sang VN2000"):
         tokens = re.split(r'\s+', coords_input.strip())
@@ -138,7 +127,6 @@ with tab2:
             st.success(f"✅ Đã xử lý {len(df)} điểm.")
         else:
             st.error("⚠️ Không có dữ liệu hợp lệ!")
-
 
 # Show output
 if "df" in st.session_state:
