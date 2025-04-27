@@ -33,9 +33,18 @@ lon0_choices = {
     104.5: "Kiên Giang, Cà Mau",
     104.75: "Lào Cai, Phú Thọ, Nghệ An, An Giang",
     105.0: "Vĩnh Phúc, Hà Nam, Ninh Bình, Thanh Hóa, Đồng Tháp, TP. Cần Thơ, Hậu Giang, Bạc Liêu",
+    105.5: "Hà Giang, Bắc Ninh, Hải Dương, Hưng Yên, Nam Định, Thái Bình, Hà Tĩnh, Tây Ninh, Vĩnh Long, Trà Vinh",
+    105.75: "TP. Hải Phòng, Bình Dương, Long An, Tiền Giang, Bến Tre, TP. Hồ Chí Minh",
     106.0: "Tuyên Quang, Hòa Bình, Quảng Bình",
     106.25: "Quảng Trị, Bình Phước",
+    106.5: "Bắc Kạn, Thái Nguyên",
     107.0: "Bắc Giang, Thừa Thiên – Huế",
+    107.25: "Lạng Sơn",
+    107.5: "Kon Tum",
+    107.75: "TP. Đà Nẵng, Quảng Nam, Đồng Nai, Bà Rịa – Vũng Tàu, Lâm Đồng",
+    108.0: "Quảng Ngãi",
+    108.25: "Bình Định, Khánh Hòa, Ninh Thuận",
+    108.5: "Gia Lai, Đắk Lắk, Đắk Nông, Phú Yên, Bình Thuận"
 }
 
 lon0_display = [f"{lon} – {province}" for lon, province in lon0_choices.items()]
@@ -120,8 +129,7 @@ with tab2:
         else:
             st.error("⚠️ Không có dữ liệu hợp lệ!")
 
-# Kết quả sau khi chuyển\if "df" in st.session_state:
-    if "df" in st.session_state:
+if "df" in st.session_state:
     df = st.session_state.df
     st.markdown("### 📊 Kết quả")
     st.dataframe(df)
@@ -130,7 +138,7 @@ with tab2:
     st.text_area("Kết quả:", st.session_state.get("textout", ""), height=250)
 
     st.download_button(
-        label="📥 Tải xuống CSV",
+        label="📅 Tải xuống CSV",
         data=df.to_csv(index=False).encode("utf-8"),
         file_name="converted_points.csv",
         mime="text/csv"
@@ -139,7 +147,7 @@ with tab2:
     kml = df_to_kml(df)
     if kml:
         st.download_button(
-            label="📥 Tải xuống KML",
+            label="📅 Tải xuống KML",
             data=kml,
             file_name="converted_points.kml",
             mime="application/vnd.google-earth.kml+xml"
@@ -149,7 +157,5 @@ with tab2:
         st.markdown("### 🌍 Bản đồ vệ tinh")
         m = generate_map(df)
         st_folium(m, width="100%", height=550)
-
-
 
 show_footer()
