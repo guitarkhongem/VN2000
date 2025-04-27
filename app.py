@@ -71,8 +71,8 @@ with tab1:
     coords_input = st.text_area("Mỗi dòng một giá trị", height=180)
 
     if st.button("Chuyển sang WGS84"):
-    parsed, errors = parse_coordinates(coords_input)
-    if parsed:
+        parsed, errors = parse_coordinates(coords_input)
+        if parsed:
         df = pd.DataFrame(
             [(ten_diem, *vn2000_to_wgs84_baibao(x, y, h, selected_lon0)) for ten_diem, x, y, h in parsed],
             columns=["Tên điểm", "Vĩ độ (Lat)", "Kinh độ (Lon)", "H (m)"]
