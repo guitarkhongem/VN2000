@@ -71,7 +71,7 @@ with tab1:
     coords_input = st.text_area("Mỗi dòng một giá trị", height=180)
 
    if st.button("Chuyển sang WGS84"):
-    parsed, errors = parse_coordinates(coords_input)
+        parsed, errors = parse_coordinates(coords_input)
     
     if parsed:
         df = pd.DataFrame(
