@@ -151,4 +151,5 @@ with tab2:
         st_folium(m, width="100%", height=550)
 
 
+
 show_footer()
