@@ -121,15 +121,16 @@ with tab2:
             st.error("⚠️ Không có dữ liệu hợp lệ!")
 
 # Kết quả sau khi chuyển\if "df" in st.session_state:
+    if "df" in st.session_state:
     df = st.session_state.df
     st.markdown("### 📊 Kết quả")
     st.dataframe(df)
 
     st.markdown("### 📝 Kết quả Text")
-    st.text_area("Kết quả:", st.session_state.textout, height=250)
+    st.text_area("Kết quả:", st.session_state.get("textout", ""), height=250)
 
     st.download_button(
-        label="📅 Tải xuống CSV",
+        label="📥 Tải xuống CSV",
         data=df.to_csv(index=False).encode("utf-8"),
         file_name="converted_points.csv",
         mime="text/csv"
@@ -138,11 +139,12 @@ with tab2:
     kml = df_to_kml(df)
     if kml:
         st.download_button(
-            label="📅 Tải xuống KML",
+            label="📥 Tải xuống KML",
             data=kml,
             file_name="converted_points.kml",
             mime="application/vnd.google-earth.kml+xml"
         )
+
 
     if {"Vĩ độ (Lat)", "Kinh độ (Lon)"}.issubset(df.columns):
         st.markdown("### 🌍 Bản đồ")
