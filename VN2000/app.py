@@ -1,3 +1,6 @@
+import sys
+import os
+sys.path.append(os.path.dirname(__file__))  # 👈 Thêm dòng này vào
 import streamlit as st
 import pandas as pd
 import re
@@ -14,7 +17,7 @@ from functions.mapgen import generate_map
 
 # Setup
 st.set_page_config(page_title="VN2000 ⇄ WGS84 Converter", layout="wide")
-analytics.log_visit()
+
 set_background("assets/background.png")
 
 # Header
