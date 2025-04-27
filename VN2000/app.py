@@ -4,21 +4,23 @@ import re
 import os
 from streamlit_folium import st_folium
 import analytics
+
 from functions.background import set_background
 from functions.parse import parse_coordinates
 from functions.kml import df_to_kml
 from functions.footer import show_footer
 from functions.converter import vn2000_to_wgs84_baibao, wgs84_to_vn2000_baibao
+from functions.mapgen import generate_map
 
-# Cấu hình page
+# Setup
 st.set_page_config(page_title="VN2000 ⇄ WGS84 Converter", layout="wide")
 analytics.log_visit()
-set_background("background.png")
+set_background("assets/background.png")
 
 # Header
 col1, col2 = st.columns([1, 5])
 with col1:
-    st.image("logo.jpg", width=90)
+    st.image("assets/logo.jpg", width=90)
 with col2:
     st.title("VN2000 ⇄ WGS84 Converter")
     st.markdown("### BẤT ĐỘNG SẢN HUYỆN HƯỚNG HÓA")
@@ -74,7 +76,7 @@ with tab2:
         else:
             st.error("⚠️ Không có dữ liệu hợp lệ!")
 
-# Kết quả
+# Show results
 if "df" in st.session_state:
     df = st.session_state.df
     st.markdown("### 📊 Kết quả")
@@ -82,20 +84,7 @@ if "df" in st.session_state:
 
     if {"Vĩ độ (Lat)", "Kinh độ (Lon)"}.issubset(df.columns):
         st.markdown("### 🌍 Bản đồ vệ tinh")
-        m = folium.Map(
-            location=[df["Vĩ độ (Lat)"].mean(), df["Kinh độ (Lon)"].mean()],
-            zoom_start=14,
-            tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-            attr="Esri.WorldImagery"
-        )
-        for _, row in df.iterrows():
-            folium.CircleMarker(
-                location=[row["Vĩ độ (Lat)"], row["Kinh độ (Lon)"]],
-                radius=3,
-                color="red",
-                fill=True,
-                fill_opacity=0.7
-            ).add_to(m)
+        m = generate_map(df)
         st_folium(m, width="100%", height=550)
 
         kml = df_to_kml(df)
