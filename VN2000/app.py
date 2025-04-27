@@ -35,20 +35,48 @@ with col2:
 tab1, tab2 = st.tabs(["➡️ VN2000 → WGS84", "⬅️ WGS84 → VN2000"])
 
 with tab1:
-    province_input = st.text_input("🔎 Nhập tên Tỉnh/Thành (nếu biết, không thì bỏ qua)", "")
+    # --- Combobox kinh tuyến trục theo tỉnh ---
+    lon0_choices = {
+        104.5: "Kiên Giang, Cà Mau",
+        104.75: "Lào Cai, Phú Thọ, Nghệ An, An Giang",
+        105.0: "Vĩnh Phúc, Hà Nam, Ninh Bình, Thanh Hóa, Đồng Tháp, TP. Cần Thơ, Hậu Giang, Bạc Liêu",
+        105.5: "Hà Giang, Bắc Ninh, Hải Dương, Hưng Yên, Nam Định, Thái Bình, Hà Tĩnh, Tây Ninh, Vĩnh Long, Trà Vinh",
+        105.75: "TP. Hải Phòng, Bình Dương, Long An, Tiền Giang, Bến Tre, TP. Hồ Chí Minh",
+        106.0: "Tuyên Quang, Hòa Bình, Quảng Bình",
+        106.25: "Quảng Trị, Bình Phước",
+        106.5: "Bắc Kạn, Thái Nguyên",
+        107.0: "Bắc Giang, Thừa Thiên – Huế",
+        107.25: "Lạng Sơn",
+        107.5: "Kon Tum",
+        107.75: "TP. Đà Nẵng, Quảng Nam, Đồng Nai, Bà Rịa – Vũng Tàu, Lâm Đồng",
+        108.0: "Quảng Ngãi",
+        108.25: "Bình Định, Khánh Hòa, Ninh Thuận",
+        108.5: "Gia Lai, Đắk Lắk, Đắk Nông, Phú Yên, Bình Thuận"
+    }
+    lon0_display = [f"{lon}° – {province}" for lon, province in lon0_choices.items()]
+    default_index = list(lon0_choices.keys()).index(106.25)
+
+    selected_display = st.selectbox(
+        "🧭 Chọn kinh tuyến trục và tỉnh tương ứng",
+        options=lon0_display,
+        index=default_index
+    )
+    selected_lon0 = float(selected_display.split("°")[0])
+
+    # --- Nhập toạ độ VN2000 ---
     coords_input = st.text_area("📝 Nhập toạ độ VN2000 (X Y H hoặc mã hiệu E/N)", height=180)
     if st.button("🔁 Chuyển sang WGS84"):
         parsed = parse_coordinates(coords_input)
         if parsed:
-            lon0 = get_lon0_from_province(province_input) if province_input else 106.25
             df = pd.DataFrame(
-                [vn2000_to_wgs84_baibao(x, y, h, lon0) for x, y, h in parsed],
+                [vn2000_to_wgs84_baibao(x, y, h, selected_lon0) for x, y, h in parsed],
                 columns=["Vĩ độ (Lat)", "Kinh độ (Lon)", "H (m)"]
             )
             st.session_state.df = df
             st.success(f"✅ Đã xử lý {len(df)} điểm.")
         else:
             st.error("⚠️ Không có dữ liệu hợp lệ!")
+
 
 with tab2:
     coords_input = st.text_area("📝 Nhập toạ độ WGS84 (Lat Lon H)", height=180, key="wgs84input")
