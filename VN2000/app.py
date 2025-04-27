@@ -79,6 +79,36 @@ with tab1:
 
 
 with tab2:
+    # --- Combobox kinh tuyến trục theo tỉnh ---
+    lon0_choices = {
+        104.5: "Kiên Giang, Cà Mau",
+        104.75: "Lào Cai, Phú Thọ, Nghệ An, An Giang",
+        105.0: "Vĩnh Phúc, Hà Nam, Ninh Bình, Thanh Hóa, Đồng Tháp, TP. Cần Thơ, Hậu Giang, Bạc Liêu",
+        105.5: "Hà Giang, Bắc Ninh, Hải Dương, Hưng Yên, Nam Định, Thái Bình, Hà Tĩnh, Tây Ninh, Vĩnh Long, Trà Vinh",
+        105.75: "TP. Hải Phòng, Bình Dương, Long An, Tiền Giang, Bến Tre, TP. Hồ Chí Minh",
+        106.0: "Tuyên Quang, Hòa Bình, Quảng Bình",
+        106.25: "Quảng Trị, Bình Phước",
+        106.5: "Bắc Kạn, Thái Nguyên",
+        107.0: "Bắc Giang, Thừa Thiên – Huế",
+        107.25: "Lạng Sơn",
+        107.5: "Kon Tum",
+        107.75: "TP. Đà Nẵng, Quảng Nam, Đồng Nai, Bà Rịa – Vũng Tàu, Lâm Đồng",
+        108.0: "Quảng Ngãi",
+        108.25: "Bình Định, Khánh Hòa, Ninh Thuận",
+        108.5: "Gia Lai, Đắk Lắk, Đắk Nông, Phú Yên, Bình Thuận"
+    }
+    lon0_display = [f"{lon}° – {province}" for lon, province in lon0_choices.items()]
+    default_index = list(lon0_choices.keys()).index(106.25)
+
+    selected_display = st.selectbox(
+        "🧭 Chọn kinh tuyến trục (mặc định Quảng Trị 106.25°)",
+        options=lon0_display,
+        index=default_index,
+        key="lon0_wgs84"
+    )
+    selected_lon0 = float(selected_display.split("°")[0])
+
+    # --- Nhập toạ độ WGS84 ---
     coords_input = st.text_area("📝 Nhập toạ độ WGS84 (Lat Lon H)", height=180, key="wgs84input")
     if st.button("🔁 Chuyển sang VN2000"):
         tokens = re.split(r'\s+', coords_input.strip())
@@ -101,13 +131,14 @@ with tab2:
                 i += 1
         if coords:
             df = pd.DataFrame(
-                [wgs84_to_vn2000_baibao(lat, lon, h, 106.25) for lat, lon, h in coords],
+                [wgs84_to_vn2000_baibao(lat, lon, h, selected_lon0) for lat, lon, h in coords],
                 columns=["X (m)", "Y (m)", "h (m)"]
             )
             st.session_state.df = df
             st.success(f"✅ Đã xử lý {len(df)} điểm.")
         else:
             st.error("⚠️ Không có dữ liệu hợp lệ!")
+
 
 # Show output
 if "df" in st.session_state:
