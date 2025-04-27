@@ -80,6 +80,10 @@ with tab1:
                 columns=["Tên điểm", "Vĩ độ (Lat)", "Kinh độ (Lon)", "H (m)"]
             )
             st.session_state.df = df
+            st.session_state.textout = "\n".join(
+                f"{row['Tên điểm']} {row['Vĩ độ (Lat)']} {row['Kinh độ (Lon)']} {row['H (m)']}"
+                for _, row in df.iterrows()
+            )
             st.success(f"✅ Đã xử lý {len(df)} điểm hợp lệ.")
         else:
             st.error("⚠️ Không có dữ liệu hợp lệ!")
