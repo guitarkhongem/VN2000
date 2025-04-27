@@ -145,10 +145,10 @@ with tab2:
             mime="application/vnd.google-earth.kml+xml"
         )
 
-
     if {"Vĩ độ (Lat)", "Kinh độ (Lon)"}.issubset(df.columns):
-        st.markdown("### 🌍 Bản đồ")
+        st.markdown("### 🌍 Bản đồ vệ tinh")
         m = generate_map(df)
         st_folium(m, width="100%", height=550)
+
 
 show_footer()
