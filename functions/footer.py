@@ -1,6 +1,8 @@
 import streamlit as st
+from datetime import datetime
 
 def show_footer():
+    year = datetime.now().year  # Lấy năm hiện tại
     st.markdown("---")
     st.markdown(
         "📌 Tác giả: **Trần Trường Sinh**  \n"
