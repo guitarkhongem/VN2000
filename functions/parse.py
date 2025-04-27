@@ -1,4 +1,9 @@
+import re
+
 def parse_coordinates(text):
+    if not text:  # 👈 Thêm dòng kiểm tra rỗng ngay đầu
+        return [], []
+        
     tokens = re.split(r'[\s\n]+', text.strip())
     coords = []
     errors = []
