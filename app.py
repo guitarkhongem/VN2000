@@ -70,9 +70,10 @@ with tab1:
     st.markdown("#### Nhập toạ độ VN2000 (X Y H hoặc mã hiệu E/N)")
     coords_input = st.text_area("Mỗi dòng một giá trị", height=180)
 
-    if st.button("Chuyển sang WGS84"):
-        parsed, errors = parse_coordinates(coords_input)
-        if parsed:
+   if st.button("Chuyển sang WGS84"):
+    parsed, errors = parse_coordinates(coords_input)
+    
+    if parsed:
         df = pd.DataFrame(
             [(ten_diem, *vn2000_to_wgs84_baibao(x, y, h, selected_lon0)) for ten_diem, x, y, h in parsed],
             columns=["Tên điểm", "Vĩ độ (Lat)", "Kinh độ (Lon)", "H (m)"]
@@ -86,6 +87,7 @@ with tab1:
         st.error(f"🚨 Có {len(errors)} dòng lỗi:")
         df_errors = pd.DataFrame(errors, columns=["Tên điểm", "X", "Y", "H"])
         st.dataframe(df_errors.style.set_properties(**{'background-color': 'pink'}))
+
 
 
 with tab2:
