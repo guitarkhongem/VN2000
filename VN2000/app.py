@@ -4,7 +4,7 @@ import re
 import os
 from streamlit_folium import st_folium
 import analytics
-
+analytics.log_visit()
 from functions.background import set_background
 from functions.parse import parse_coordinates
 from functions.kml import df_to_kml
