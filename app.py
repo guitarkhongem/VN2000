@@ -20,6 +20,16 @@ from functions.mapgen import generate_map
 st.set_page_config(page_title="VN2000 ⇄ WGS84 Converter", layout="wide")
 set_background("assets/background.png")
 
+# --- CSS chỉnh màu chữ nút thành đỏ đậm ---
+st.markdown("""
+<style>
+div.stButton > button, div.stDownloadButton > button {
+color: #B30000;
+font-weight: bold;
+}
+</style>
+""", unsafe_allow_html=True)
+
 # Header
 col1, col2 = st.columns([1, 5])
 with col1:
@@ -30,22 +40,23 @@ with col2:
 
 # Danh sách kinh tuyến trục
 lon0_choices = {
-104.5: "Kiên Giang, Cà Mau",
-104.75: "Lào Cai, Phú Thọ, Nghệ An, An Giang",
-105.0: "Vĩnh Phúc, Hà Nam, Ninh Bình, Thanh Hóa, Đồng Tháp, TP. Cần Thơ, Hậu Giang, Bạc Liêu",
-105.5: "Hà Giang, Bắc Ninh, Hải Dương, Hưng Yên, Nam Định, Thái Bình, Hà Tĩnh, Tây Ninh, Vĩnh Long, Trà Vinh",
-105.75: "TP. Hải Phòng, Bình Dương, Long An, Tiền Giang, Bến Tre, TP. Hồ Chí Minh",
-106.0: "Tuyên Quang, Hòa Bình, Quảng Bình",
-106.25: "Quảng Trị, Bình Phước",
-106.5: "Bắc Kạn, Thái Nguyên",
-107.0: "Bắc Giang, Thừa Thiên – Huế",
-107.25: "Lạng Sơn",
-107.5: "Kon Tum",
-107.75: "TP. Đà Nẵng, Quảng Nam, Đồng Nai, Bà Rịa – Vũng Tàu, Lâm Đồng",
-108.0: "Quảng Ngãi",
-108.25: "Bình Định, Khánh Hòa, Ninh Thuận",
-108.5: "Gia Lai, Đắk Lắk, Đắk Nông, Phú Yên, Bình Thuận"
+    104.5: "Kiên Giang, Cà Mau",
+    104.75: "Lào Cai, Phú Thọ, Nghệ An, An Giang",
+    105.0: "Vĩnh Phúc, Hà Nam, Ninh Bình, Thanh Hóa, Đồng Tháp, TP. Cần Thơ, Hậu Giang, Bạc Liêu",
+    105.5: "Hà Giang, Bắc Ninh, Hải Dương, Hưng Yên, Nam Định, Thái Bình, Hà Tĩnh, Tây Ninh, Vĩnh Long, Trà Vinh",
+    105.75: "TP. Hải Phòng, Bình Dương, Long An, Tiền Giang, Bến Tre, TP. Hồ Chí Minh",
+    106.0: "Tuyên Quang, Hòa Bình, Quảng Bình",
+    106.25: "Quảng Trị, Bình Phước",
+    106.5: "Bắc Kạn, Thái Nguyên",
+    107.0: "Bắc Giang, Thừa Thiên – Huế",
+    107.25: "Lạng Sơn",
+    107.5: "Kon Tum",
+    107.75: "TP. Đà Nẵng, Quảng Nam, Đồng Nai, Bà Rịa – Vũng Tàu, Lâm Đồng",
+    108.0: "Quảng Ngãi",
+    108.25: "Bình Định, Khánh Hòa, Ninh Thuận",
+    108.5: "Gia Lai, Đắk Lắk, Đắk Nông, Phú Yên, Bình Thuận"
 }
+
 lon0_display = [f"{lon} – {province}" for lon, province in lon0_choices.items()]
 default_index = list(lon0_choices.keys()).index(106.25)
 
@@ -87,22 +98,38 @@ with tab2:
     coords_input = st.text_area("Mỗi dòng một giá trị", height=180, key="wgs84input")
 
     if st.button("Chuyển sang VN2000"):
-        parsed, errors = parse_coordinates(coords_input)
+        tokens = re.split(r'[\s\n]+', coords_input.strip())
+        coords = []
+        i = 0
+        while i < len(tokens):
+            chunk = []
+            for _ in range(3):
+                if i < len(tokens):
+                    try:
+                        chunk.append(float(tokens[i].replace(",", ".")))
+                    except:
+                        break
+                    i += 1
+            if len(chunk) == 2:
+                chunk.append(0.0)
+            if len(chunk) == 3:
+                coords.append(chunk)
+            else:
+                i += 1
 
-        if parsed:
+        if coords:
             df = pd.DataFrame(
-                [(ten_diem, *wgs84_to_vn2000_baibao(lat, lon, h, selected_lon0)) for ten_diem, lat, lon, h in parsed],
+                [("", *wgs84_to_vn2000_baibao(lat, lon, h, selected_lon0)) for lat, lon, h in coords],
                 columns=["Tên điểm", "X (m)", "Y (m)", "h (m)"]
             )
             st.session_state.df = df
-            st.success(f"✅ Đã xử lý {len(df)} điểm hợp lệ.")
+            st.session_state.textout = "\n".join(
+                f"{row['Tên điểm']} {row['X (m)']} {row['Y (m)']} {row['h (m)']}"
+                for _, row in df.iterrows()
+            )
+            st.success(f"Đã xử lý {len(df)} điểm.")
         else:
-            st.error("⚠️ Không có dữ liệu hợp lệ!")
-
-        if errors:
-            st.error(f"🚨 Có {len(errors)} dòng lỗi:")
-            df_errors = pd.DataFrame(errors, columns=["Tên điểm", "Lat", "Lon", "H"])
-            st.dataframe(df_errors.style.set_properties(**{'background-color': 'pink'}))
+            st.error("Không có dữ liệu hợp lệ!")
 
 if "df" in st.session_state:
     df = st.session_state.df
