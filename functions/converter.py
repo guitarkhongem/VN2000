@@ -1,126 +1,122 @@
-import math
-import streamlit as st
+import os
+import io
+import cgi
+import pandas as pd
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from urllib.parse import parse_qs
 
-# ------------------- Hàm chuyển đổi VN2000 → WGS84 -------------------
-def vn2000_to_wgs84_baibao(x, y, h, lon0_deg):
+# ------ Hàm xử lý tọa độ (bạn có thể import từ functions nếu muốn) ------
+
+def vn2000_to_wgs84_baibao(x, y, h, lon0_deg=106.25):
+    import math
     a = 6378137.0
     e2 = 0.00669437999013
-    af = 1 / 298.257223563
-    e_ = e2 / (1 - e2)
+    e_2 = e2 / (1 - e2)
     k0 = 0.9999
     y0 = 500000
+
     lon0_rad = math.radians(lon0_deg)
+    M = x / k0
+    mu = M / (a * (1 - e2/4 - 3*e2**2/64 - 5*e2**3/256))
 
-    mu = (x / k0) / (a * (1 - e2 / 4 - 3 * e2**2 / 64 - 5 * e2**3 / 256))
-    a1 = (1 - math.sqrt(1 - e2)) / (1 + math.sqrt(1 - e2))
-    B1 = mu + (3 * a1 / 2 - 27 * a1**3 / 32) * math.sin(2 * mu)         + (21 * a1**2 / 16 - 55 * a1**4 / 32) * math.sin(4 * mu)         + (151 * a1**3 / 96) * math.sin(6 * mu)
+    e1 = (1 - math.sqrt(1 - e2)) / (1 + math.sqrt(1 - e2))
+    J1 = (3*e1/2 - 27*e1**3/32)
+    J2 = (21*e1**2/16 - 55*e1**4/32)
+    J3 = (151*e1**3/96)
+    J4 = (1097*e1**4/512)
 
-    N1 = a / math.sqrt(1 - e2 * math.sin(B1)**2)
-    R1 = a * (1 - e2) / (1 - e2 * math.sin(B1)**2)**1.5
-    C1 = e_ * math.cos(B1)**2
-    T1 = math.tan(B1)**2
-    D = (y - y0) / (k0 * N1)
+    fp = mu + J1*math.sin(2*mu) + J2*math.sin(4*mu) + J3*math.sin(6*mu) + J4*math.sin(8*mu)
 
-    B = B1 - (N1 * math.tan(B1) / R1) * (
-        D**2 / 2
-        - (5 + 3 * T1 + 10 * C1 - 4 * C1**2 - 9 * e_) * D**4 / 24
-        + (61 + 90 * T1 + 298 * C1 + 45 * T1**2 - 252 * e_ - 3 * C1**2) * D**6 / 720
-    )
+    C1 = e_2 * math.cos(fp)**2
+    T1 = math.tan(fp)**2
+    R1 = a*(1 - e2) / (1 - e2 * math.sin(fp)**2)**1.5
+    N1 = a / math.sqrt(1 - e2 * math.sin(fp)**2)
+    D = (y - y0) / (N1 * k0)
 
-    L = lon0_rad + (1 / math.cos(B1)) * (
-        D
-        - (1 + 2 * T1 + C1) * D**3 / 6
-        + (5 - 2 * C1 + 28 * T1 - 3 * C1**2 + 8 * e_ + 24 * T1**2) * D**6 / 120
-    )
+    lat = (fp - (N1*math.tan(fp)/R1)*(D**2/2 - (5+3*T1+10*C1-4*C1**2-9*e_2)*D**4/24
+          + (61+90*T1+298*C1+45*T1**2-252*e_2-3*C1**2)*D**6/720))
+    lon = (lon0_rad + (D - (1+2*T1+C1)*D**3/6
+          + (5-2*C1+28*T1-3*C1**2+8*e_2+24*T1**2)*D**5/120) / math.cos(fp))
 
-    N = a / math.sqrt(1 - e2 * math.sin(B)**2)
-    X_vn = (N + h) * math.cos(B) * math.cos(L)
-    Y_vn = (N + h) * math.cos(B) * math.sin(L)
-    Z_vn = ((1 - e2) * N + h) * math.sin(B)
+    lat_deg = math.degrees(lat)
+    lon_deg = math.degrees(lon)
 
-    dX = -191.90441429
-    dY = -39.30318279
-    dZ = -111.45032835
-    rx = math.radians(-0.00928836 / 3600)
-    ry = math.radians(0.01975479 / 3600)
-    rz = math.radians(-0.00427372 / 3600)
-    k = 1.000000252906278
+    return lat_deg, lon_deg, h
 
-    X_wgs = dX + k * (X_vn + rz * Y_vn - ry * Z_vn)
-    Y_wgs = dY + k * (-rz * X_vn + Y_vn + rx * Z_vn)
-    Z_wgs = dZ + k * (ry * X_vn - rx * Y_vn + Z_vn)
+# ------- Server Handler --------
 
-    p = math.sqrt(X_wgs ** 2 + Y_wgs ** 2)
-    lon = math.atan2(Y_wgs, X_wgs)
-    lat = math.atan2(Z_wgs, p * (1 - e2))
-    lat0 = 0
-    while abs(lat - lat0) > 1e-12:
-        lat0 = lat
-        N = a / math.sqrt(1 - e2 * math.sin(lat0)**2)
-        h2 = p / math.cos(lat0) - N
-        lat = math.atan2(Z_wgs, p * (1 - e2 * N / (N + h2)))
+class SimpleServer(BaseHTTPRequestHandler):
 
-    return round(math.degrees(lat), 8), round(math.degrees(lon), 8), round(h2, 7)
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'text/html')
+        self.end_headers()
+        html = '''
+        <html><head><title>VN2000 ⇄ WGS84 Converter</title></head><body>
+        <h2>Upload File TXT/CSV hoặc Dán Dữ Liệu</h2>
+        <form enctype="multipart/form-data" method="post">
+        <input type="file" name="file"><br><br>
+        <textarea name="text_input" rows="10" cols="80" placeholder="Dán dữ liệu vào đây..."></textarea><br><br>
+        <button type="submit">Chuyển đổi VN2000 ➔ WGS84</button>
+        </form>
+        </body></html>
+        '''
+        self.wfile.write(html.encode('utf-8'))
 
-# ------------------- Hàm chuyển đổi WGS84 → VN2000 -------------------
-def wgs84_to_vn2000_baibao(lat_deg, lon_deg, h, lon0_deg):
-    a = 6378137.0
-    f = 1 / 298.257223563
-    e2 = 0.00669437999013
-    ep2 = e2 / (1 - e2)
-    k0 = 0.9999
-    y0 = 500000
+    def do_POST(self):
+        ctype, pdict = cgi.parse_header(self.headers.get('content-type'))
+        if ctype == 'multipart/form-data':
+            pdict['boundary'] = bytes(pdict['boundary'], "utf-8")
+            content_len = int(self.headers.get('content-length'))
+            pdict['CONTENT-LENGTH'] = content_len
+            fields = cgi.parse_multipart(self.rfile, pdict)
+            filedata = fields.get('file')
+            textdata = fields.get('text_input')
 
-    B = math.radians(lat_deg)
-    L = math.radians(lon_deg)
-    L0 = math.radians(lon0_deg)
+            content = ''
+            if filedata:
+                content = filedata[0].decode('utf-8')
+            elif textdata:
+                content = textdata[0]
 
-    N = a / math.sqrt(1 - e2 * math.sin(B)**2)
-    Xw = (N + h) * math.cos(B) * math.cos(L)
-    Yw = (N + h) * math.cos(B) * math.sin(L)
-    Zw = ((1 - e2) * N + h) * math.sin(B)
+            # Parse toạ độ
+            coords = []
+            for line in content.strip().splitlines():
+                parts = line.strip().split()
+                if len(parts) >= 2:
+                    try:
+                        x = float(parts[0])
+                        y = float(parts[1])
+                        h = float(parts[2]) if len(parts) >= 3 else 0.0
+                        coords.append((x, y, h))
+                    except:
+                        continue
 
-    dX = -191.90441429
-    dY = -39.30318279
-    dZ = -111.45032835
-    rx = math.radians(-0.00928836 / 3600)
-    ry = math.radians(0.01975479 / 3600)
-    rz = math.radians(-0.00427372 / 3600)
-    k = 1.000000252906278
+            # Chuyển đổi VN2000 ➔ WGS84
+            results = []
+            for x, y, h in coords:
+                lat, lon, h = vn2000_to_wgs84_baibao(x, y, h)
+                results.append((lat, lon, h))
 
-    Xs = Xw - dX
-    Ys = Yw - dY
-    Zs = Zw - dZ
+            # Xuất CSV
+            df = pd.DataFrame(results, columns=["Latitude", "Longitude", "Altitude"])
+            output = io.StringIO()
+            df.to_csv(output, index=False)
+            csv_content = output.getvalue()
 
-    Xv = (1 / k) * (Xs - rz * Ys + ry * Zs)
-    Yv = (1 / k) * (rz * Xs + Ys - rx * Zs)
-    Zv = (1 / k) * (-ry * Xs + rx * Ys + Zs)
+            self.send_response(200)
+            self.send_header('Content-type', 'text/csv')
+            self.send_header('Content-Disposition', 'attachment; filename="converted.csv"')
+            self.end_headers()
+            self.wfile.write(csv_content.encode('utf-8'))
 
-    p = math.sqrt(Xv**2 + Yv**2)
-    gamma = math.atan((Zv / p) * (1 - f + (a * e2) / math.sqrt(Xv**2 + Yv**2 + Zv**2)))
-    B_vn = math.atan((Zv * (1 - f) + a * e2 * math.sin(gamma)**3) / ((1 - f) * (p - a * e2 * math.cos(gamma)**3)))
-    L_vn = math.atan2(Yv, Xv)
-    if L_vn < 0:
-        L_vn += 2 * math.pi
-    H_vn = math.cos(B_vn) * p + Zv * math.sin(B_vn) - a * math.sqrt(1 - e2 * math.sin(B_vn)**2)
+# ------ Start Server ------
 
-    l = L_vn - L0
-    eta = math.sqrt(ep2) * math.cos(B_vn)
-    T = math.tan(B_vn)**2
-    C = ep2 * math.cos(B_vn)**2
-    N = a / math.sqrt(1 - e2 * math.sin(B_vn)**2)
+def run(server_class=HTTPServer, handler_class=SimpleServer, port=5000):
+    server_address = ('', port)
+    httpd = server_class(server_address, handler_class)
+    print(f"Đang chạy server tại http://127.0.0.1:{port}")
+    httpd.serve_forever()
 
-    A1x = (math.cos(B_vn)**2 * (5 - T + 9 * eta**2 + 4 * eta**4)) / 12
-    A2x = (math.cos(B_vn)**4 * (61 - 58 * T + T**2)) / 360
-    A1y = (math.cos(B_vn)**2 * (1 - T + eta**2)) / 6
-    A2y = (math.cos(B_vn)**4 * (5 - 18 * T + T**2 + 14 * eta**2 - 58 * T * eta**2)) / 120
-
-    A1 = 1 + 3/4 * e2 + 45/64 * e2**2
-    A2 = 3/8 * e2 + 15/32 * e2**2
-    A3 = 15/256 * e2**2
-    XB = a * (1 - e2) * (A1 * B_vn - A2 * math.sin(2 * B_vn) + A3 * math.sin(4 * B_vn))
-
-    x = k0 * (XB + l**2 / 4 * N * math.sin(2 * B_vn) * (1 + A1x * l**2 + A2x * l**4))
-    y = k0 * l * N * math.cos(B_vn) * (1 + A1y * l**2 + A2y * l**4) + y0
-
-    return round(x, 4), round(y, 4), round(H_vn, 4)
+if __name__ == "__main__":
+    run()
