@@ -1,11 +1,4 @@
-import os
-import io
-import cgi
-import pandas as pd
-from http.server import BaseHTTPRequestHandler, HTTPServer
-from urllib.parse import parse_qs
 
-# ------ Hàm xử lý tọa độ (bạn có thể import từ functions nếu muốn) ------
 
 def vn2000_to_wgs84_baibao(x, y, h, lon0_deg=106.25):
     import math
