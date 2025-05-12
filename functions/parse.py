@@ -15,7 +15,7 @@ def parse_coordinates(text):
         tokens = re.split(r'[\t\s]+', line)
         tokens = [t for t in tokens if t]
 
-        # --- Trường hợp gom 3 dòng số đơn ---
+        # --- Gom 3 dòng đơn ---
         if len(tokens) == 1 and i + 2 < len(lines):
             try:
                 x = float(lines[i].strip().replace(",", "."))
@@ -28,21 +28,28 @@ def parse_coordinates(text):
             except:
                 pass
 
-        # --- Trường hợp X=..., Y=... trên 2 dòng ---
-        if re.fullmatch(r"[Xx]=\d+(\.\d+)?", line) and i + 1 < len(lines):
+        # --- X=..., Y=... (tự đảo trục nếu cần) ---
+        if re.fullmatch(r"[Xx]=[0-9]*\.?[0-9]+", line) and i + 1 < len(lines):
             next_line = lines[i + 1].strip()
-            if re.fullmatch(r"[Yy]=\d+(\.\d+)?", next_line):
+            if re.fullmatch(r"[Yy]=[0-9]*\.?[0-9]+", next_line):
                 try:
-                    x = float(line.split("=")[1])
-                    y = float(next_line.split("=")[1])
+                    x_raw = float(line.split("=")[1])
+                    y_raw = float(next_line.split("=")[1])
+
+                    # Tự động đảo nếu giá trị sai miền
+                    if x_raw > 2_650_000 or y_raw < 700_000:
+                        x, y = y_raw, x_raw
+                    else:
+                        x, y = x_raw, y_raw
+
                     coords.append([f"Điểm {auto_index}", x, y, 0.0])
                     auto_index += 1
                     i += 2
                     continue
-                except:
-                    pass
+                except Exception as e:
+                    errors.append([line, f"Lỗi: {e}"])
 
-        # --- Trường hợp dòng chứa E/N riêng biệt ---
+        # --- Dòng chứa E/N tách biệt ---
         if len(tokens) == 1 and re.fullmatch(r"[EN]\d{8}", tokens[0]):
             if i + 1 < len(lines):
                 next_tokens = re.split(r'[\t\s]+', lines[i+1].strip())
@@ -63,7 +70,7 @@ def parse_coordinates(text):
             i += 1
             continue
 
-        # --- Trường hợp E/N cùng dòng ---
+        # --- Dòng chứa E/N cùng dòng ---
         if len(tokens) == 2 and all(re.fullmatch(r"[EN]\d{8}", t) for t in tokens):
             x, y = None, None
             for t in tokens:
@@ -79,7 +86,7 @@ def parse_coordinates(text):
             i += 1
             continue
 
-        # --- Dòng STT X Y H / STT X Y / X Y H / X Y ---
+        # --- STT X Y H / STT X Y / X Y H / X Y ---
         try:
             if len(tokens) == 4:
                 stt, x, y, h = tokens
