@@ -28,6 +28,20 @@ def parse_coordinates(text):
             except:
                 pass
 
+        # --- Trường hợp X=..., Y=... trên 2 dòng ---
+        if re.fullmatch(r"[Xx]=\d+(\.\d+)?", line) and i + 1 < len(lines):
+            next_line = lines[i + 1].strip()
+            if re.fullmatch(r"[Yy]=\d+(\.\d+)?", next_line):
+                try:
+                    x = float(line.split("=")[1])
+                    y = float(next_line.split("=")[1])
+                    coords.append([f"Điểm {auto_index}", x, y, 0.0])
+                    auto_index += 1
+                    i += 2
+                    continue
+                except:
+                    pass
+
         # --- Trường hợp dòng chứa E/N riêng biệt ---
         if len(tokens) == 1 and re.fullmatch(r"[EN]\d{8}", tokens[0]):
             if i + 1 < len(lines):
@@ -88,7 +102,7 @@ def parse_coordinates(text):
             errors.append([line, f"Lỗi: {e}"])
         i += 1
 
-    # --- Lọc miền ---
+    # --- Lọc miền hợp lệ ---
     filtered = []
     for ten_diem, x, y, h in coords:
         if 500_000 <= x <= 2_650_000 and 330_000 <= y <= 670_000 and -1000 <= h <= 3200:
