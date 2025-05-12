@@ -28,7 +28,7 @@ def parse_coordinates(text):
             except:
                 pass
 
-        # --- X=..., Y=... (tự đảo trục nếu cần) ---
+        # --- X=..., Y=... (tự đảo nếu cần thiết) ---
         if re.fullmatch(r"[Xx]=[0-9]*\.?[0-9]+", line) and i + 1 < len(lines):
             next_line = lines[i + 1].strip()
             if re.fullmatch(r"[Yy]=[0-9]*\.?[0-9]+", next_line):
@@ -36,9 +36,14 @@ def parse_coordinates(text):
                     x_raw = float(line.split("=")[1])
                     y_raw = float(next_line.split("=")[1])
 
-                    # Tự động đảo nếu giá trị sai miền
-                    if x_raw > 2_650_000 or y_raw < 700_000:
-                        x, y = y_raw, x_raw
+                    # Kiểm tra miền hợp lệ
+                    x_ok = 500_000 <= x_raw <= 2_650_000
+                    y_ok = 330_000 <= y_raw <= 670_000
+                    x_swap_ok = 500_000 <= y_raw <= 2_650_000
+                    y_swap_ok = 330_000 <= x_raw <= 670_000
+
+                    if not (x_ok and y_ok) and (x_swap_ok and y_swap_ok):
+                        x, y = y_raw, x_raw  # đảo trục
                     else:
                         x, y = x_raw, y_raw
 
