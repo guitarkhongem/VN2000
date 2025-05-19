@@ -1,133 +1,141 @@
 import re
 
 def parse_coordinates(text):
-    if not text:
-        return [], []
+    """
+    Giải mã văn bản đầu vào thành danh sách tọa độ (x, y, h).
+    Các định dạng hỗ trợ:
+      - 'STT X Y' (3 thành phần, STT là số hoặc chữ, H mặc định = 0.0)
+      - 'X Y H' (3 thành phần)
+      - 'X Y' (2 thành phần, H mặc định = 0.0)
+      - 'STT X Y H' (4 thành phần, bỏ qua STT đầu)
+      - Định dạng có 'X=...','Y=...' (có thể trên cùng dòng hoặc nhiều dòng)
+      - Định dạng 'E ...', 'N ...', tương tự 'X','Y'
+      - Định dạng 3 dòng riêng biệt: X, Y, H (mỗi giá trị trên một dòng)
+    """
+    points = []
+    # Tách các dòng và loại bỏ dòng trống
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
 
-    lines = text.strip().splitlines()
-    coords = []
-    errors = []
-    auto_index = 1
-    i = 0
-
-    while i < len(lines):
-        line = lines[i].strip().replace(",", ".")
-        tokens = re.split(r'[\t\s]+', line)
-        tokens = [t for t in tokens if t]
-
-        # --- Gom 3 dòng đơn ---
-        if len(tokens) == 1 and i + 2 < len(lines):
-            try:
-                x = float(lines[i].strip().replace(",", "."))
-                y = float(lines[i+1].strip().replace(",", "."))
-                h = float(lines[i+2].strip().replace(",", "."))
-                coords.append([f"Điểm {auto_index}", x, y, h])
-                auto_index += 1
-                i += 3
-                continue
-            except:
-                pass
-
-        # --- X=..., Y=... ---
-        if re.fullmatch(r"[Xx]=[0-9]*\.?[0-9]+", line) and i + 1 < len(lines):
-            next_line = lines[i + 1].strip()
-            if re.fullmatch(r"[Yy]=[0-9]*\.?[0-9]+", next_line):
+    # Định dạng 3 dòng liên tiếp (X, Y, H)
+    # Nếu tổng số dòng chia hết cho 3 và mỗi dòng chỉ có 1 số
+    if len(lines) >= 3 and len(lines) % 3 == 0:
+        valid = True
+        for line in lines:
+            if not re.match(r'^-?\d+(\.\d+)?$', line):
+                valid = False
+                break
+        if valid:
+            for i in range(0, len(lines), 3):
                 try:
-                    x_raw = float(line.split("=")[1])
-                    y_raw = float(next_line.split("=")[1])
-
-                    x_ok = 500_000 <= x_raw <= 2_650_000
-                    y_ok = 330_000 <= y_raw <= 670_000
-                    x_swap_ok = 500_000 <= y_raw <= 2_650_000
-                    y_swap_ok = 330_000 <= x_raw <= 670_000
-
-                    if not (x_ok and y_ok) and (x_swap_ok and y_swap_ok):
-                        x, y = y_raw, x_raw
-                    else:
-                        x, y = x_raw, y_raw
-
-                    coords.append([f"Điểm {auto_index}", x, y, 0.0])
-                    auto_index += 1
-                    i += 2
+                    x = float(lines[i])
+                    y = float(lines[i+1])
+                    h = float(lines[i+2])
+                except ValueError:
                     continue
-                except Exception as e:
-                    errors.append([line, f"Lỗi: {e}"])
+                points.append((x, y, h))
+            # Trả kết quả ngay nếu khớp định dạng 3 dòng liên tiếp
+            if points:
+                return points
 
-        # --- Dòng chứa E/N tách biệt ---
-        if len(tokens) == 1 and re.fullmatch(r"[EN]\d{8}", tokens[0]):
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+
+        # Định dạng 'X=... Y=...' hoặc nhiều dòng 'X=...', 'Y=...'
+        if '=' in line:
+            parts = re.split('[,\\s]+', line.replace(',', ' '))
+            coords = {}
+            for part in parts:
+                if '=' in part:
+                    key, val = part.split('=', 1)
+                    key = key.strip().upper().rstrip(':')
+                    try:
+                        coords[key] = float(val)
+                    except ValueError:
+                        continue
+            if 'X' in coords and 'Y' in coords:
+                x = coords['X']; y = coords['Y']
+                # Nếu có 'Z' hoặc 'H' thì lấy, ngược lại H = 0.0
+                h = coords.get('Z', coords.get('H', 0.0))
+                points.append((x, y, h))
+            i += 1
+            continue
+
+        # Định dạng Easting/Northing ('E ...', 'N ...')
+        match_e = re.match(r'^[Ee]\s*[:=]?\s*([-\d\.]+)', line)
+        if match_e:
+            try:
+                x = float(match_e.group(1))
+            except ValueError:
+                i += 1
+                continue
+            # Tìm dòng tiếp theo cho 'N ...'
             if i + 1 < len(lines):
-                next_tokens = re.split(r'[\t\s]+', lines[i+1].strip())
-                next_tokens = [t for t in next_tokens if t]
-                if len(next_tokens) == 1 and re.fullmatch(r"[EN]\d{8}", next_tokens[0]):
-                    x, y = None, None
-                    for t in [tokens[0], next_tokens[0]]:
-                        if t.startswith("E"):
-                            y = int(t[1:])
-                        elif t.startswith("N"):
-                            x = int(t[1:])
-                    if x is not None and y is not None:
-                        coords.append([f"Điểm {auto_index}", float(x), float(y), 0.0])
-                        auto_index += 1
+                match_n = re.match(r'^[Nn]\s*[:=]?\s*([-\d\.]+)', lines[i+1])
+                if match_n:
+                    try:
+                        y = float(match_n.group(1))
+                    except ValueError:
                         i += 2
                         continue
-            errors.append([line, "Thiếu dòng mã hiệu E/N kèm theo"])
+                    # Tìm H ở dòng sau nếu có
+                    h = 0.0
+                    if i + 2 < len(lines):
+                        match_h = re.match(r'^[Hh]\s*[:=]?\s*([-\d\.]+)', lines[i+2])
+                        if match_h:
+                            try:
+                                h = float(match_h.group(1))
+                            except ValueError:
+                                h = 0.0
+                            i += 3
+                        else:
+                            i += 2
+                    else:
+                        i += 2
+                    points.append((x, y, h))
+                    continue
+
+        tokens = line.split()
+        if len(tokens) == 2:
+            # Định dạng 'X Y' (không có H)
+            try:
+                x = float(tokens[0]); y = float(tokens[1]); h = 0.0
+                points.append((x, y, h))
+            except ValueError:
+                pass
             i += 1
             continue
-
-        # --- Dòng chứa E/N cùng dòng ---
-        if len(tokens) == 2 and all(re.fullmatch(r"[EN]\d{8}", t) for t in tokens):
-            x, y = None, None
-            for t in tokens:
-                if t.startswith("E"):
-                    y = int(t[1:])
-                elif t.startswith("N"):
-                    x = int(t[1:])
-            if x is not None and y is not None:
-                coords.append([f"Điểm {auto_index}", float(x), float(y), 0.0])
-                auto_index += 1
-            else:
-                errors.append([line, "Không tách được E/N"])
-            i += 1
-            continue
-
-        # --- STT X Y H / STT X Y / X Y H / X Y ---
-        try:
-            if len(tokens) == 4:
-                stt, x, y, h = tokens
-                coords.append([stt, float(x), float(y), float(h)])
-            elif len(tokens) == 3:
+        if len(tokens) == 3:
+            first, second, third = tokens
+            # Nếu token đầu là STT (toàn chữ hoặc toàn số nguyên)
+            if first.isalpha() or first.isdigit():
                 try:
-                    # TH: X Y H
-                    x, y, h = map(float, tokens)
-                    coords.append([f"Điểm {auto_index}", x, y, h])
-                    auto_index += 1
+                    x = float(second); y = float(third); h = 0.0
+                    points.append((x, y, h))
+                    i += 1
+                    continue
                 except ValueError:
-                    # TH: STT X Y
-                    stt, x, y = tokens
-                    coords.append([stt, float(x), float(y), 0.0])
-            elif len(tokens) == 2:
-                x, y = map(float, tokens)
-                coords.append([f"Điểm {auto_index}", x, y, 0.0])
-                auto_index += 1
-            else:
-                raise ValueError("Không đúng định dạng")
-        except Exception as e:
-            errors.append([line, f"Lỗi: {e}"])
+                    pass
+            # Nếu không phải STT, coi là X Y H
+            try:
+                x = float(first); y = float(second); h = float(third)
+                points.append((x, y, h))
+            except ValueError:
+                # Nếu đầu tiên không thể chuyển thành số (STT ký tự)
+                # và đã thất bại ở trên, bỏ qua
+                pass
+            i += 1
+            continue
+        if len(tokens) == 4:
+            # Định dạng 'STT X Y H' (bỏ qua STT đầu)
+            try:
+                x = float(tokens[1]); y = float(tokens[2]); h = float(tokens[3])
+                points.append((x, y, h))
+            except ValueError:
+                pass
+            i += 1
+            continue
+
         i += 1
 
-    # --- Lọc miền hợp lệ ---
-    filtered = []
-    for ten_diem, x, y, h in coords:
-        if 500_000 <= x <= 2_650_000 and 330_000 <= y <= 670_000 and -1000 <= h <= 3200:
-            filtered.append([ten_diem, x, y, h])
-        else:
-            reason = []
-            if not (500_000 <= x <= 2_650_000):
-                reason.append(f"X={x} ngoài miền")
-            if not (330_000 <= y <= 670_000):
-                reason.append(f"Y={y} ngoài miền")
-            if not (-1000 <= h <= 3200):
-                reason.append(f"H={h} ngoài miền")
-            errors.append([ten_diem, x, y, h, "; ".join(reason)])
-
-    return filtered, errors
+    return points
