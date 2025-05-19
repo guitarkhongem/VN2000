@@ -234,6 +234,18 @@ with col_map:
                 st.session_state.show_lengths = not st.session_state.get("show_lengths", False)
 
         m = folium.Map(location=[df_sorted.iloc[0]["Vĩ độ (Lat)"], df_sorted.iloc[0]["Kinh độ (Lon)"]], zoom_start=15, tiles=tileset)
+            # === Hiển thị nút dẫn đường đến điểm đầu tiên ===
+            first_point = df_sorted.iloc[0]
+            lat = first_point["Vĩ độ (Lat)"]
+            lon = first_point["Kinh độ (Lon)"]
+            maps_url = f"https://www.google.com/maps/dir/?api=1&destination={lat},{lon}"
+
+            st.markdown(
+                f"<a href='{maps_url}' target='_blank'>"
+                f"<button style='padding:8px 16px; font-size:16px; background-color:#2d8cff; color:white; border:none; border-radius:5px;'>🧭 Dẫn đường Google Maps (điểm đầu)</button>"
+                f"</a>",
+                unsafe_allow_html=True
+            )
 
         if st.session_state.get("join_points", False):
             points = [(row["Vĩ độ (Lat)"], row["Kinh độ (Lon)"]) for _, row in df_sorted.iterrows()]
