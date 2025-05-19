@@ -102,12 +102,9 @@ def parse_coordinates(text):
                     coords.append([f"Điểm {auto_index}", x, y, h])
                     auto_index += 1
                 except ValueError:
-                    try:
-                        # TH: STT X Y
-                        stt, x, y = tokens
-                        coords.append([stt, float(x), float(y), 0.0])
-                    except:
-                        errors.append([line, "Không thể phân tích STT X Y"])
+                    # TH: STT X Y
+                    stt, x, y = tokens
+                    coords.append([stt, float(x), float(y), 0.0])
             elif len(tokens) == 2:
                 x, y = map(float, tokens)
                 coords.append([f"Điểm {auto_index}", x, y, 0.0])
