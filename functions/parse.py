@@ -28,7 +28,7 @@ def parse_coordinates(text):
             except:
                 pass
 
-        # --- X=..., Y=... (tự đảo nếu cần thiết) ---
+        # --- X=..., Y=... ---
         if re.fullmatch(r"[Xx]=[0-9]*\.?[0-9]+", line) and i + 1 < len(lines):
             next_line = lines[i + 1].strip()
             if re.fullmatch(r"[Yy]=[0-9]*\.?[0-9]+", next_line):
@@ -36,14 +36,13 @@ def parse_coordinates(text):
                     x_raw = float(line.split("=")[1])
                     y_raw = float(next_line.split("=")[1])
 
-                    # Kiểm tra miền hợp lệ
                     x_ok = 500_000 <= x_raw <= 2_650_000
                     y_ok = 330_000 <= y_raw <= 670_000
                     x_swap_ok = 500_000 <= y_raw <= 2_650_000
                     y_swap_ok = 330_000 <= x_raw <= 670_000
 
                     if not (x_ok and y_ok) and (x_swap_ok and y_swap_ok):
-                        x, y = y_raw, x_raw  # đảo trục
+                        x, y = y_raw, x_raw
                     else:
                         x, y = x_raw, y_raw
 
@@ -98,12 +97,17 @@ def parse_coordinates(text):
                 coords.append([stt, float(x), float(y), float(h)])
             elif len(tokens) == 3:
                 try:
+                    # TH: X Y H
                     x, y, h = map(float, tokens)
                     coords.append([f"Điểm {auto_index}", x, y, h])
                     auto_index += 1
-                except:
-                    stt, x, y = tokens
-                    coords.append([stt, float(x), float(y), 0.0])
+                except ValueError:
+                    try:
+                        # TH: STT X Y
+                        stt, x, y = tokens
+                        coords.append([stt, float(x), float(y), 0.0])
+                    except:
+                        errors.append([line, "Không thể phân tích STT X Y"])
             elif len(tokens) == 2:
                 x, y = map(float, tokens)
                 coords.append([f"Điểm {auto_index}", x, y, 0.0])
