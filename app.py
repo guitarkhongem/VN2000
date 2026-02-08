@@ -78,14 +78,23 @@ with col_left:
 with tab1:
     if st.button("➡️ Chuyển sang WGS84"):
         parsed, _ = parse_coordinates(coords_input)
+
         if parsed:
             df = pd.DataFrame(
                 [(t, *vn2000_to_wgs84_baibao(x, y, h, lon0)) for t, x, y, h in parsed],
                 columns=["Tên điểm", "Vĩ độ (Lat)", "Kinh độ (Lon)", "H (m)"]
             )
+
             st.session_state.df = df
+
+            st.session_state.textout = "\n".join(
+                f"{r['Tên điểm']} {r['Vĩ độ (Lat)']} {r['Kinh độ (Lon)']} {r['H (m)']}"
+                for _, r in df.iterrows()
+            )
+
         else:
             st.error("Không có dữ liệu hợp lệ")
+
 
 # =========================
 # WGS84 ➜ VN2000
@@ -95,10 +104,12 @@ with tab2:
         tokens = re.split(r"[,\s\n]+", coords_input.strip())
         pts = []
         i = 0
+
         while i + 1 < len(tokens):
             try:
-                lat, lon = float(tokens[i]), float(tokens[i+1])
-                h = float(tokens[i+2]) if i+2 < len(tokens) else 0
+                lat = float(tokens[i])
+                lon = float(tokens[i + 1])
+                h = float(tokens[i + 2]) if i + 2 < len(tokens) else 0.0
                 pts.append((lat, lon, h))
                 i += 3
             except:
@@ -106,11 +117,24 @@ with tab2:
 
         if pts:
             df = pd.DataFrame(
-                [(str(i+1), *wgs84_to_vn2000_baibao(lat, lon, h, lon0))
-                 for i, (lat, lon, h) in enumerate(pts)],
+                [
+                    (str(i + 1), *wgs84_to_vn2000_baibao(lat, lon, h, lon0))
+                    for i, (lat, lon, h) in enumerate(pts)
+                ],
                 columns=["Tên điểm", "X (m)", "Y (m)", "H (m)"]
             )
+
+            # ✅ GÁN SESSION STATE ĐÚNG CHỖ
             st.session_state.df = df
+
+            st.session_state.textout = "\n".join(
+                f"{r['Tên điểm']} {r['X (m)']} {r['Y (m)']} {r['H (m)']}"
+                for _, r in df.iterrows()
+            )
+
+        else:
+            st.error("⚠️ Không có dữ liệu hợp lệ để chuyển sang VN2000")
+
 
 # =========================
 # Output + CAD
@@ -120,7 +144,19 @@ with col_mid:
         df = st.session_state.df
         st.dataframe(df)
 
-        st.download_button("📀 CSV", df.to_csv(index=False), "points.csv")
+        st.download_button(
+            "📀 CSV",
+            df.to_csv(index=False),
+            "points.csv"
+        )
+
+    if "textout" in st.session_state:
+        st.text_area(
+            "📄 Text kết quả (copy nhanh)",
+            st.session_state.textout,
+            height=200
+        )
+
 
         kml = df_to_kml(df)
         if kml:
