@@ -107,12 +107,12 @@ def select_lon0():
     if province != "-- Không chọn --":
         st.success(
             f"Kinh tuyến trục theo tỉnh **{province}**: "
-            f"**{st.session_state.lon0_value} **"
+            f"{st.session_state.lon0_value}"
         )
     else:
         st.info(
             f"Dùng kinh tuyến trục nhập tay: "
-            f"**{st.session_state.lon0_value} **"
+            f"{st.session_state.lon0_value}"
         )
 
     return st.session_state.lon0_value
