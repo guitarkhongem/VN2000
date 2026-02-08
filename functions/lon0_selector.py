@@ -96,7 +96,7 @@ def select_lon0():
     # --- Nhập lon0 (LUÔN đọc từ session_state) ---
     with col_lon0:
         st.number_input(
-            "Hoặc nhập kinh tuyến trục (decimal)",
+            "Hoặc nhập kinh tuyến trục ",
             min_value=102.0,
             max_value=110.0,
             step=0.25,
@@ -107,12 +107,12 @@ def select_lon0():
     if province != "-- Không chọn --":
         st.success(
             f"Kinh tuyến trục theo tỉnh **{province}**: "
-            f"**{st.session_state.lon0_value} (decimal)**"
+            f"**{st.session_state.lon0_value} **"
         )
     else:
         st.info(
             f"Dùng kinh tuyến trục nhập tay: "
-            f"**{st.session_state.lon0_value} (decimal)**"
+            f"**{st.session_state.lon0_value} **"
         )
 
     return st.session_state.lon0_value
