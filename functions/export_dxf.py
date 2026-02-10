@@ -1,11 +1,12 @@
 import ezdxf
 
 
-def export_to_dxf(points, filepath):
+def export_to_dxf(points, filepath, cross_size=0.5):
     """
     points: list of (name, x, y)
         x = Northing (BẮC)
         y = Easting  (ĐÔNG)
+
     DXF:
         X = Easting
         Y = Northing
@@ -21,23 +22,30 @@ def export_to_dxf(points, filepath):
         doc.layers.new(name="TEXT", dxfattribs={"color": 3})
 
     for name, x, y in points:
-        Xcad = y   # ĐẢO Ở ĐÂY
-        Ycad = x
+        # ✅ ĐẢO ĐÚNG THEO QUY ƯỚC CỦA BẠN
+        Xcad = float(y)   # Easting
+        Ycad = float(x)   # Northing
 
-        # Vẽ điểm
-        msp.add_point(
-            (Xcad, Ycad),
+        # ===== DẤU + =====
+        msp.add_line(
+            (Xcad - cross_size, Ycad),
+            (Xcad + cross_size, Ycad),
+            dxfattribs={"layer": "POINTS"}
+        )
+        msp.add_line(
+            (Xcad, Ycad - cross_size),
+            (Xcad, Ycad + cross_size),
             dxfattribs={"layer": "POINTS"}
         )
 
-        # Ghi tên điểm
-        txt = msp.add_text(
+        # ===== TÊN ĐIỂM =====
+        msp.add_text(
             str(name),
             dxfattribs={
-                "height": 1.2,
-                "layer": "TEXT"
+                "height": cross_size * 3,
+                "layer": "TEXT",
+                "insert": (Xcad + cross_size * 1.2, Ycad + cross_size * 1.2)
             }
         )
-        txt.dxf.insert = (Xcad + 1.0, Ycad + 1.0)
 
     doc.saveas(filepath)
